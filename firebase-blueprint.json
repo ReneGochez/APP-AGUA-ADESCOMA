@@ -1,0 +1,52 @@
+{
+  "entities": {
+    "Socio": {
+      "title": "Socios ADESCOMA",
+      "properties": {
+        "numero": {
+          "type": "string",
+          "description": "Número único correlativo de socio"
+        },
+        "codigo": {
+          "type": "string",
+          "description": "Código de identificación del socio"
+        },
+        "nombre": {
+          "type": "string",
+          "description": "Nombre completo del socio"
+        },
+        "sector": {
+          "type": "string",
+          "description": "Sector geográfico de servicio"
+        },
+        "zona": {
+          "type": "string",
+          "description": "Zona particular dentor del sector"
+        },
+        "status": {
+          "type": "string",
+          "description": "Estatus del servicio de agua (activa, suspendida)",
+          "enum": ["activa", "suspendida"]
+        },
+        "presion": {
+          "type": "number",
+          "description": "Presión estática medida en PSI"
+        },
+        "latitud": {
+          "type": "number",
+          "description": "Coordenada latitud GPS"
+        },
+        "longitud": {
+          "type": "number",
+          "description": "Coordenada longitud GPS"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+/* Ensure container takes exact responsive viewport heights */
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background-color: #f8f9f5;
+  color: #3a3a32;
+}
+
+/* Custom serif pairings */
+.font-serif {
+  font-family: var(--font-serif), Georgia, serif;
+}
+
+.font-sans {
+  font-family: var(--font-sans), system-ui, sans-serif;
+}

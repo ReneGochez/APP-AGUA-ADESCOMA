@@ -1,0 +1,8 @@
+{
+  "name": "ADESCOMA - Gestión de Agua Comunitario",
+  "description": "Sistema de administración y georreferenciación de socios del proyecto de agua comunitaria de ADESCOMA, controlando estados de servicio y reportando presiones.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

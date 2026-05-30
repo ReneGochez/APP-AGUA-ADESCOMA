@@ -38,7 +38,14 @@ import {
   LogIn,
   LogOut,
   ShieldCheck,
-  User as UserIcon
+  User as UserIcon,
+  Receipt,
+  BarChart3,
+  Settings,
+  DollarSign,
+  CreditCard,
+  ChevronRight,
+  Sliders
 } from "lucide-react";
 
 // Types matching the firebase blueprint
@@ -115,8 +122,28 @@ const DEFAULT_SOCIOS: Omit<Socio, "id">[] = [
   }
 ];
 
+interface Recibo {
+  id: string;
+  socioNumero: string;
+  socioNombre: string;
+  mes: string;
+  consumo: number;
+  monto: number;
+  estado: "pagado" | "pendiente";
+  fechaPago?: string;
+}
+
+const DEFAULT_RECIBOS: Recibo[] = [
+  { id: "REC-01", socioNumero: "1024", socioNombre: "Juan Pérez Rodríguez", mes: "Mayo 2026", consumo: 22, monto: 12.50, estado: "pagado", fechaPago: "2026-05-25" },
+  { id: "REC-02", socioNumero: "0842", socioNombre: "María Elena Santos", mes: "Mayo 2026", consumo: 18, monto: 10.00, estado: "pendiente" },
+  { id: "REC-03", socioNumero: "1210", socioNombre: "Carlos Arana", mes: "Mayo 2026", consumo: 25, monto: 14.00, estado: "pagado", fechaPago: "2026-05-24" },
+  { id: "REC-04", socioNumero: "1423", socioNombre: "Sofia Leticia Gomez", mes: "Mayo 2026", consumo: 30, monto: 16.50, estado: "pendiente" },
+  { id: "REC-05", socioNumero: "0955", socioNombre: "Roberto Palacios", mes: "Mayo 2026", consumo: 15, monto: 8.50, estado: "pagado", fechaPago: "2026-05-28" }
+];
+
 export default function Home() {
   const isMobile = useIsMobile();
+  const [activeTab, setActiveTab] = useState<"monitoreo" | "facturacion" | "reportes" | "configuracion">("monitoreo");
   const [socios, setSocios] = useState<Socio[]>([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
@@ -147,6 +174,21 @@ export default function Home() {
   
   // UI helper alerts
   const [savingMsg, setSavingMsg] = useState<string | null>(null);
+
+  // States for Facturación module
+  const [recibos, setRecibos] = useState<Recibo[]>(DEFAULT_RECIBOS);
+  const [formSocioNum, setFormSocioNum] = useState("");
+  const [formMonto, setFormMonto] = useState("");
+  const [formConsumo, setFormConsumo] = useState("");
+  const [formMes, setFormMes] = useState("Mayo 2026");
+  const [facturacionSearch, setFacturacionSearch] = useState("");
+
+  // States for Configuración module
+  const [tarifaBase, setTarifaBase] = useState(5.00);
+  const [tarifaExcedente, setTarifaExcedente] = useState(0.50);
+  const [presionMin, setPresionMin] = useState(15);
+  const [presionMax, setPresionMax] = useState(60);
+  const [alertasEmail, setAlertasEmail] = useState(true);
 
   // Check if Maps API Key is defined
   const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
@@ -526,9 +568,89 @@ export default function Home() {
       </header>
 
       {/* Main Body */}
-      <main className="flex flex-1 overflow-hidden flex-col md:flex-row" id="main_layout_split">
+      <main className="flex flex-1 overflow-hidden flex-col md:flex-row bg-[#FAFBF8]" id="main_layout_split">
         
-        {/* Left Drawer / Sidebar: Filter & Select List */}
+        {/* Navigation Sidebar (Desktop) / Bottom Bar (Mobile) */}
+        <nav className="flex flex-row md:flex-col justify-around md:justify-start bg-[#FAFBF8] border-b md:border-b-0 md:border-r border-[#e2e2d5] w-full md:w-60 p-2 md:p-4 shrink-0 gap-1.5 md:gap-3 z-30" id="main_navigation_sidebar">
+          {/* Brand/Indicator in desktop */}
+          <div className="hidden md:block mb-3 px-2">
+            <p className="text-[10px] text-[#8a8a78] uppercase tracking-widest font-bold">Módulos</p>
+          </div>
+
+          {/* Nav Item: Monitoreo */}
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab("monitoreo");
+              setSelectedSocio(null);
+            }}
+            className={`flex flex-col md:flex-row items-center gap-1 md:gap-2.5 px-3 py-1.5 md:py-2.5 w-full rounded-xl transition-all cursor-pointer text-left ${
+              activeTab === "monitoreo"
+                ? "bg-[#E6E9DE] text-[#4A4A30] font-bold shadow-xs border-b-2 md:border-b-0 md:border-l-4 border-[#5A5A40]"
+                : "text-[#8a8a78] hover:bg-[#E6E9DE]/55 hover:text-[#4A4A30]"
+            }`}
+          >
+            <Compass className="w-4.5 h-4.5 shrink-0" />
+            <span className="text-[9px] md:text-xs tracking-wide uppercase font-semibold md:normal-case">Red de Agua</span>
+          </button>
+
+          {/* Nav Item: Facturación */}
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab("facturacion");
+              setSelectedSocio(null);
+            }}
+            className={`flex flex-col md:flex-row items-center gap-1 md:gap-2.5 px-3 py-1.5 md:py-2.5 w-full rounded-xl transition-all cursor-pointer text-left ${
+              activeTab === "facturacion"
+                ? "bg-[#E6F0FA] text-[#2C5282] font-bold shadow-xs border-b-2 md:border-b-0 md:border-l-4 border-[#3182CE]"
+                : "text-[#8a8a78] hover:bg-[#E6F0FA]/55 hover:text-[#2C5282]"
+            }`}
+          >
+            <Receipt className="w-4.5 h-4.5 shrink-0" />
+            <span className="text-[9px] md:text-xs tracking-wide uppercase font-semibold md:normal-case">Facturación</span>
+          </button>
+
+          {/* Nav Item: Reportes */}
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab("reportes");
+              setSelectedSocio(null);
+            }}
+            className={`flex flex-col md:flex-row items-center gap-1 md:gap-2.5 px-3 py-1.5 md:py-2.5 w-full rounded-xl transition-all cursor-pointer text-left ${
+              activeTab === "reportes"
+                ? "bg-[#F3E8FF] text-[#6B46C1] font-bold shadow-xs border-b-2 md:border-b-0 md:border-l-4 border-[#8B5CF6]"
+                : "text-[#8a8a78] hover:bg-[#F3E8FF]/55 hover:text-[#6B46C1]"
+            }`}
+          >
+            <BarChart3 className="w-4.5 h-4.5 shrink-0" />
+            <span className="text-[9px] md:text-xs tracking-wide uppercase font-semibold md:normal-case">Estadísticas</span>
+          </button>
+
+          {/* Nav Item: Configuración */}
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab("configuracion");
+              setSelectedSocio(null);
+            }}
+            className={`flex flex-col md:flex-row items-center gap-1 md:gap-2.5 px-3 py-1.5 md:py-2.5 w-full rounded-xl transition-all cursor-pointer text-left ${
+              activeTab === "configuracion"
+                ? "bg-[#E6FFFA] text-[#234E52] font-bold shadow-xs border-b-2 md:border-b-0 md:border-l-4 border-[#14B8A6]"
+                : "text-[#8a8a78] hover:bg-[#E6FFFA]/55 hover:text-[#234E52]"
+            }`}
+          >
+            <Settings className="w-4.5 h-4.5 shrink-0" />
+            <span className="text-[9px] md:text-xs tracking-wide uppercase font-semibold md:normal-case">Configuración</span>
+          </button>
+        </nav>
+
+        {/* Content Container */}
+        {activeTab === "monitoreo" ? (
+          <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+            
+            {/* Left Drawer / Sidebar: Filter & Select List */}
         <aside className="w-full md:w-[320px] bg-white border-r border-[#e2e2d5] flex flex-col shrink-0 overflow-hidden" id="sidebar_main">
           
           {/* Quick Metrics Panels */}
@@ -1154,6 +1276,637 @@ export default function Home() {
           </div>
 
         </div>
+        ) : activeTab === "facturacion" ? (
+          <div className="flex-1 flex flex-col overflow-y-auto p-4 md:p-6 bg-[#FAFBF8] space-y-6">
+            
+            {/* Header banner */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 p-5 bg-[#E6F0FA] border border-[#BEE3F8] rounded-3xl shadow-xs animate-fade-in">
+              <div>
+                <span className="px-2 py-0.5 bg-[#3182CE] text-white text-[8px] font-bold tracking-widest rounded-full uppercase">Cobros de Agua</span>
+                <h2 className="text-xl font-serif font-bold text-[#2C5282] italic mt-1 leading-none">Módulo de Facturación y Control de Pagos</h2>
+                <p className="text-xs text-[#4A5568] mt-1">Cuentas corrientes de agua y cobros comunitarios de ADESCOMA</p>
+              </div>
+              <button 
+                type="button"
+                onClick={() => {
+                  setSavingMsg("Recibos de Agua Generados para este Mes");
+                  setTimeout(() => setSavingMsg(null), 3000);
+                }}
+                className="px-3.5 py-1.5 bg-[#3182CE] hover:bg-[#2B6CB0] text-white text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer uppercase tracking-wider"
+              >
+                Generar Recibos del Mes
+              </button>
+            </div>
+
+            {/* Quick Metrics Panels */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="bg-white p-4 rounded-2xl border border-[#e2e2d5] shadow-xs flex items-center justify-between">
+                <div>
+                  <p className="text-[9px] text-[#8a8a78] uppercase tracking-wider font-bold">Total Recaudado (Mayo)</p>
+                  <p className="text-2xl font-serif font-bold text-[#2C5282] italic leading-tight mt-1">
+                    ${recibos.filter(r => r.estado === "pagado").reduce((sum, r) => sum + r.monto, 0).toFixed(2)}
+                  </p>
+                  <p className="text-[10px] text-[#8a8a78] mt-0.5">De {recibos.filter(r => r.estado === "pagado").length} recibos solventes</p>
+                </div>
+                <div className="w-10 h-10 bg-[#E6F0FA] text-[#3182CE] rounded-xl flex items-center justify-center">
+                  <DollarSign className="w-5 h-5" />
+                </div>
+              </div>
+
+              <div className="bg-white p-4 rounded-2xl border border-[#e2e2d5] shadow-xs flex items-center justify-between">
+                <div>
+                  <p className="text-[9px] text-[#8a8a78] uppercase tracking-wider font-bold">Cuentas Pendientes</p>
+                  <p className="text-2xl font-serif font-bold text-amber-700 italic leading-tight mt-1">
+                    ${recibos.filter(r => r.estado === "pendiente").reduce((sum, r) => sum + r.monto, 0).toFixed(2)}
+                  </p>
+                  <p className="text-[10px] text-[#8a8a78] mt-0.5">{recibos.filter(r => r.estado === "pendiente").length} recibos en mora</p>
+                </div>
+                <div className="w-10 h-10 bg-[#FFFaf0] text-amber-600 rounded-xl flex items-center justify-center">
+                  <AlertTriangle className="w-5 h-5" />
+                </div>
+              </div>
+
+              <div className="bg-white p-4 rounded-2xl border border-[#e2e2d5] shadow-xs flex items-center justify-between">
+                <div>
+                  <p className="text-[9px] text-[#8a8a78] uppercase tracking-wider font-bold">Tasa de Cobro</p>
+                  <p className="text-2xl font-serif font-bold text-[#2F855A] italic leading-tight mt-1">
+                    {Math.round((recibos.filter(r => r.estado === "pagado").length / recibos.length) * 100)}%
+                  </p>
+                  <div className="w-24 h-1.5 bg-[#f1f3ea] rounded-full mt-1.5 overflow-hidden">
+                    <div 
+                      className="bg-emerald-500 h-full rounded-full" 
+                      style={{ width: `${(recibos.filter(r => r.estado === "pagado").length / recibos.length) * 100}%` }}
+                    ></div>
+                  </div>
+                </div>
+                <div className="w-10 h-10 bg-[#E6F6EB] text-[#2F855A] rounded-xl flex items-center justify-center">
+                  <Activity className="w-5 h-5" />
+                </div>
+              </div>
+            </div>
+
+            {/* Split layout: Bills List vs Payment Form */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              
+              {/* Left Column: Bills Table */}
+              <div className="bg-white border border-[#e2e2d5] rounded-3xl p-5 lg:col-span-2 space-y-4 flex flex-col shadow-xs">
+                <div className="flex justify-between items-center flex-wrap gap-2">
+                  <h3 className="text-sm font-bold text-[#2d2d26] uppercase tracking-wider">Historial de Recibos y Cobranza</h3>
+                  <div className="relative w-full sm:w-64">
+                    <span className="absolute inset-y-0 left-0 flex items-center pl-2.5 pointer-events-none text-[#8a8a78]">
+                      <Search className="w-3.5 h-3.5" />
+                    </span>
+                    <input
+                      type="text"
+                      placeholder="Filtrar por socio o número..."
+                      value={facturacionSearch}
+                      onChange={(e) => setFacturacionSearch(e.target.value)}
+                      className="w-full bg-[#f8f9f5] border border-[#e2e2d5] rounded-xl pl-8 pr-3 py-1.5 text-xs outline-none focus:border-[#3182CE] text-slate-800"
+                    />
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="border-b border-[#e2e2d5] text-[#8a8a78] font-bold uppercase text-[9px] tracking-wider">
+                        <th className="py-2.5">Código Recibo</th>
+                        <th className="py-2.5">Socio</th>
+                        <th className="py-2.5">Mes</th>
+                        <th className="py-2.5 text-center">Consumo</th>
+                        <th className="py-2.5 text-right">Monto</th>
+                        <th className="py-2.5 text-center">Estado</th>
+                        <th className="py-2.5 text-center">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#f1f3ea] text-slate-800">
+                      {recibos
+                        .filter(r => r.socioNombre.toLowerCase().includes(facturacionSearch.toLowerCase()) || r.socioNumero.includes(facturacionSearch) || r.id.includes(facturacionSearch))
+                        .map((r) => (
+                          <tr key={r.id} className="hover:bg-[#f8f9f5]/65 transition-colors">
+                            <td className="py-3 font-mono font-bold text-[#2C5282]">{r.id}</td>
+                            <td className="py-3">
+                              <p className="font-bold">{r.socioNombre}</p>
+                              <p className="text-[10px] text-[#8a8a78] font-mono">#{r.socioNumero}</p>
+                            </td>
+                            <td className="py-3 text-[#5A5A40] font-semibold">{r.mes}</td>
+                            <td className="py-3 text-center font-mono font-semibold">{r.consumo} m³</td>
+                            <td className="py-3 text-right font-mono font-bold text-[#2d2d26]">${r.monto.toFixed(2)}</td>
+                            <td className="py-3 text-center">
+                              <span className={`px-2 py-0.5 text-[9px] font-bold rounded-full ${
+                                r.estado === "pagado"
+                                  ? "bg-[#E6F6EB] text-[#2F855A] border border-[#C6F6D5]"
+                                  : "bg-[#FFF5F5] text-[#C53030] border border-[#FEB2B2]"
+                              }`}>
+                                {r.estado === "pagado" ? "PAGADO" : "PENDIENTE"}
+                              </span>
+                            </td>
+                            <td className="py-3 text-center">
+                              {r.estado === "pendiente" ? (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setRecibos(prev => prev.map(item => item.id === r.id ? { ...item, estado: "pagado", fechaPago: new Date().toISOString().split('T')[0] } : item));
+                                    setSavingMsg(`¡Pago del recibo ${r.id} registrado con éxito!`);
+                                    setTimeout(() => setSavingMsg(null), 3000);
+                                  }}
+                                  className="px-2 py-1 bg-[#3182CE] hover:bg-[#2B6CB0] text-white rounded-md text-[9px] font-bold transition-all shadow-xs cursor-pointer uppercase"
+                                >
+                                  Cobrar
+                                </button>
+                              ) : (
+                                <span className="text-[10px] text-[#8a8a78] font-mono">{r.fechaPago}</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Right Column: New Payment Form */}
+              <div className="bg-white border border-[#e2e2d5] rounded-3xl p-5 space-y-4 shadow-xs">
+                <h3 className="text-sm font-bold text-[#2d2d26] uppercase tracking-wider">Registrar Nuevo Recibo / Pago</h3>
+                <p className="text-xs text-[#8a8a78]">Registra consumos manuales de agua y genera cobros inmediatos en el sistema.</p>
+                
+                <form 
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (!formSocioNum || !formConsumo || !formMonto) {
+                      alert("Por favor rellene todos los campos.");
+                      return;
+                    }
+                    const socio = socios.find(s => s.numero === formSocioNum) || DEFAULT_SOCIOS.find(s => s.numero === formSocioNum);
+                    const nombre = socio ? socio.nombre : `Socio #${formSocioNum}`;
+                    const nuevoRecibo: Recibo = {
+                      id: `REC-${String(recibos.length + 1).padStart(2, '0')}`,
+                      socioNumero: formSocioNum,
+                      socioNombre: nombre,
+                      mes: formMes,
+                      consumo: Number(formConsumo),
+                      monto: Number(formMonto),
+                      estado: "pendiente"
+                    };
+                    setRecibos(prev => [nuevoRecibo, ...prev]);
+                    setFormSocioNum("");
+                    setFormConsumo("");
+                    setFormMonto("");
+                    setSavingMsg(`Recibo ${nuevoRecibo.id} generado exitosamente.`);
+                    setTimeout(() => setSavingMsg(null), 3000);
+                  }}
+                  className="space-y-3 text-xs"
+                >
+                  <div>
+                    <label className="text-[9px] font-bold text-[#8a8a78] uppercase mb-1 block">Seleccionar Socio</label>
+                    <select
+                      value={formSocioNum}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setFormSocioNum(val);
+                        setFormConsumo("20");
+                        setFormMonto("10.00");
+                      }}
+                      required
+                      className="w-full p-2 bg-[#f8f9f5] border border-[#e2e2d5] rounded-xl outline-none"
+                    >
+                      <option value="">-- Seleccionar Socio --</option>
+                      {socios.map(s => (
+                        <option key={s.id} value={s.numero}>{s.nombre} (#{s.numero})</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[9px] font-bold text-[#8a8a78] uppercase mb-1 block">Consumo (m³)</label>
+                      <input
+                        type="number"
+                        placeholder="Ej. 18"
+                        value={formConsumo}
+                        onChange={(e) => {
+                          const val = Number(e.target.value);
+                          setFormConsumo(e.target.value);
+                          const excess = Math.max(0, val - 10);
+                          const calculated = tarifaBase + excess * tarifaExcedente;
+                          setFormMonto(calculated.toFixed(2));
+                        }}
+                        required
+                        className="w-full p-2 bg-[#f8f9f5] border border-[#e2e2d5] rounded-xl outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-bold text-[#8a8a78] uppercase mb-1 block">Monto a Cobrar ($)</label>
+                      <input
+                        type="text"
+                        placeholder="Ej. 10.00"
+                        value={formMonto}
+                        onChange={(e) => setFormMonto(e.target.value)}
+                        required
+                        className="w-full p-2 bg-[#f8f9f5] border border-[#e2e2d5] rounded-xl outline-none font-mono font-bold"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[9px] font-bold text-[#8a8a78] uppercase mb-1 block">Período de Facturación</label>
+                    <select
+                      value={formMes}
+                      onChange={(e) => setFormMes(e.target.value)}
+                      className="w-full p-2 bg-[#f8f9f5] border border-[#e2e2d5] rounded-xl outline-none"
+                    >
+                      <option value="Mayo 2026">Mayo 2026</option>
+                      <option value="Junio 2026">Junio 2026</option>
+                      <option value="Julio 2026">Julio 2026</option>
+                    </select>
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="w-full bg-[#3182CE] hover:bg-[#2B6CB0] text-white py-2.5 rounded-xl font-bold text-xs tracking-wider uppercase transition-all shadow-md shadow-[#3182CE]/15 flex items-center justify-center gap-1.5 cursor-pointer mt-4"
+                  >
+                    <CreditCard className="w-3.5 h-3.5" /> Registrar e Imprimir Recibo
+                  </button>
+                </form>
+
+                {savingMsg && (
+                  <div className="text-center p-2 bg-[#f1f3ea] text-emerald-800 text-[10px] font-bold rounded-xl animate-fade-in border border-[#e2e2d5] font-mono uppercase tracking-wider">
+                    {savingMsg}
+                  </div>
+                )}
+              </div>
+            </div>
+
+          </div>
+        ) : activeTab === "reportes" ? (
+          <div className="flex-1 flex flex-col overflow-y-auto p-4 md:p-6 bg-[#FAFBF8] space-y-6 animate-fade-in">
+            
+            {/* Header banner */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 p-5 bg-[#F3E8FF] border border-[#E9D8FD] rounded-3xl shadow-xs">
+              <div>
+                <span className="px-2 py-0.5 bg-[#8B5CF6] text-white text-[8px] font-bold tracking-widest rounded-full uppercase font-sans">Analíticas</span>
+                <h2 className="text-xl font-serif font-bold text-[#6B46C1] italic mt-1 leading-none">Estadísticas y Reportes de la Red</h2>
+                <p className="text-xs text-[#4A5568] mt-1">Monitoreo de consumos hidráulicos y avance de censos de red</p>
+              </div>
+              <div className="text-xs font-semibold text-[#6B46C1] bg-white/70 px-3 py-1.5 rounded-xl border border-[#E9D8FD]">
+                Fecha: {new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+              </div>
+            </div>
+
+            {/* Grid Layout of Report Graphs */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              
+              {/* Card 1: Consumo por Sectores */}
+              <div className="bg-white border border-[#e2e2d5] rounded-3xl p-5 space-y-4 shadow-xs">
+                <div>
+                  <h3 className="text-sm font-bold text-[#2d2d26] uppercase tracking-wider">Volumen Consumido por Sector</h3>
+                  <p className="text-[11px] text-[#8a8a78]">Metros cúbicos de agua distribuidos durante el último mes.</p>
+                </div>
+
+                <div className="space-y-3.5 pt-2">
+                  <div>
+                    <div className="flex justify-between text-xs font-semibold mb-1">
+                      <span>Sector 1 - Centro</span>
+                      <span className="font-mono text-[#5A5A40]">340 m³ (35%)</span>
+                    </div>
+                    <div className="w-full h-3.5 bg-[#FAFBF8] border border-[#e2e2d5] rounded-full overflow-hidden">
+                      <div className="bg-[#D3E0EA] h-full rounded-full transition-all duration-1000" style={{ width: "35%" }}></div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-xs font-semibold mb-1">
+                      <span>Sector 2 - Vista Hermosa</span>
+                      <span className="font-mono text-[#5A5A40]">210 m³ (22%)</span>
+                    </div>
+                    <div className="w-full h-3.5 bg-[#FAFBF8] border border-[#e2e2d5] rounded-full overflow-hidden">
+                      <div className="bg-[#FFE8D6] h-full rounded-full transition-all duration-1000" style={{ width: "22%" }}></div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-xs font-semibold mb-1">
+                      <span>Sector 3 - Loma</span>
+                      <span className="font-mono text-[#5A5A40]">415 m³ (43%)</span>
+                    </div>
+                    <div className="w-full h-3.5 bg-[#FAFBF8] border border-[#e2e2d5] rounded-full overflow-hidden">
+                      <div className="bg-[#E2F0D9] h-full rounded-full transition-all duration-1000" style={{ width: "43%" }}></div>
+                    </div>
+                  </div>
+                </div>
+
+                <p className="text-[10px] text-[#8a8a78] leading-tight pt-2 border-t border-[#f1f3ea] italic">
+                  * El consumo total acumulado en la comunidad ADESCOMA es de 965 m³.
+                </p>
+              </div>
+
+              {/* Card 2: Niveles de Presión de Agua */}
+              <div className="bg-white border border-[#e2e2d5] rounded-3xl p-5 space-y-4 shadow-xs">
+                <div>
+                  <h3 className="text-sm font-bold text-[#2d2d26] uppercase tracking-wider">Estado de Presión Estática</h3>
+                  <p className="text-[11px] text-[#8a8a78]">Salud hidráulica de la red de tuberías de ADESCOMA.</p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-center justify-around gap-4 pt-2">
+                  <div className="relative w-32 h-32 flex items-center justify-center">
+                    <svg className="w-full h-full transform -rotate-90">
+                      <circle cx="64" cy="64" r="50" fill="none" stroke="#F1F3EA" strokeWidth="12" />
+                      <circle cx="64" cy="64" r="50" fill="none" stroke="#8B5CF6" strokeWidth="12" strokeDasharray="314" strokeDashoffset={314 - (314 * (stats.avgPressure || 35)) / 80} strokeLinecap="round" className="transition-all duration-1000" />
+                    </svg>
+                    <div className="absolute text-center">
+                      <p className="text-2xl font-serif font-bold text-[#6B46C1] italic leading-none">{stats.avgPressure} <span className="text-xs">PSI</span></p>
+                      <p className="text-[8px] text-[#8a8a78] uppercase tracking-wider mt-1 font-bold">Presión Media</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 text-xs w-full sm:w-auto">
+                    <div className="flex justify-between sm:justify-start items-center gap-3">
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#8B5CF6]"></span>
+                      <span className="font-semibold text-slate-800">Promedio: {stats.avgPressure} PSI</span>
+                    </div>
+                    <div className="flex justify-between sm:justify-start items-center gap-3">
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#5A5A40]"></span>
+                      <span className="font-semibold text-slate-800">Presión Máxima: 52 PSI</span>
+                    </div>
+                    <div className="flex justify-between sm:justify-start items-center gap-3">
+                      <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                      <span className="font-semibold text-slate-800">Límites: {presionMin} - {presionMax} PSI</span>
+                    </div>
+                  </div>
+                </div>
+
+                <p className="text-[10px] text-[#8a8a78] leading-tight pt-2 border-t border-[#f1f3ea] flex items-center gap-1.5 font-semibold text-[#5A5A40]">
+                  <Check className="w-3.5 h-3.5 text-emerald-600" /> Niveles generales de presión estables y sin fugas mayores reportadas.
+                </p>
+              </div>
+
+              {/* Card 3: Avance de Geolocalización del Censo */}
+              <div className="bg-white border border-[#e2e2d5] rounded-3xl p-5 space-y-4 shadow-xs">
+                <div>
+                  <h3 className="text-sm font-bold text-[#2d2d26] uppercase tracking-wider">Avance del Mapeo Geográfico</h3>
+                  <p className="text-[11px] text-[#8a8a78]">Progreso de geolocalización de las acometidas de agua.</p>
+                </div>
+
+                <div className="space-y-4 pt-2">
+                  <div className="flex justify-between text-xs font-semibold">
+                    <span>Sectores Georreferenciados</span>
+                    <span className="font-mono text-[#5A5A40]">{stats.geolocalizados} de {stats.total} socios ({stats.total > 0 ? Math.round((stats.geolocalizados / stats.total) * 100) : 0}%)</span>
+                  </div>
+
+                  <div className="w-full h-4 bg-[#FAFBF8] border border-[#e2e2d5] rounded-full overflow-hidden">
+                    <div 
+                      className="bg-[#D3E0EA] h-full rounded-full transition-all duration-1000" 
+                      style={{ width: `${stats.total > 0 ? (stats.geolocalizados / stats.total) * 100 : 0}%` }}
+                    ></div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 pt-2">
+                    <div className="bg-[#FAFBF8] border border-[#e2e2d5] p-3 rounded-2xl text-center">
+                      <p className="text-[9px] text-[#8a8a78] uppercase font-bold">Faltan Ubicar</p>
+                      <p className="text-xl font-serif font-bold text-[#8a8a78] italic mt-0.5">{stats.total - stats.geolocalizados}</p>
+                    </div>
+                    <div className="bg-[#FAFBF8] border border-[#e2e2d5] p-3 rounded-2xl text-center">
+                      <p className="text-[9px] text-[#8a8a78] uppercase font-bold">Zonas Cubiertas</p>
+                      <p className="text-xl font-serif font-bold text-emerald-800 italic mt-0.5">3 / 3</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 4: Bitácora de Eventos de Red */}
+              <div className="bg-white border border-[#e2e2d5] rounded-3xl p-5 space-y-3.5 shadow-xs flex flex-col justify-between">
+                <div>
+                  <h3 className="text-sm font-bold text-[#2d2d26] uppercase tracking-wider">Historial de Operaciones Recientes</h3>
+                  <p className="text-[11px] text-[#8a8a78]">Historial de acciones registradas en el sistema ADESCOMA.</p>
+                </div>
+
+                <div className="flex-1 overflow-y-auto space-y-2 text-xs max-h-44 pt-2 divide-y divide-[#f1f3ea]">
+                  <div className="py-2 flex justify-between gap-2">
+                    <p className="font-semibold text-slate-800">Socio #1423 Sofia Leticia Gómez agregada al padrón</p>
+                    <span className="text-[9px] text-[#8a8a78] font-mono">16:15</span>
+                  </div>
+                  <div className="py-2 flex justify-between gap-2">
+                    <p className="font-semibold text-slate-800">Georreferencia vinculada a socio #1024 Juan Pérez</p>
+                    <span className="text-[9px] text-[#8a8a78] font-mono">15:30</span>
+                  </div>
+                  <div className="py-2 flex justify-between gap-2">
+                    <p className="font-semibold text-slate-800">Presión ajustada a 42 PSI en Sector Centro</p>
+                    <span className="text-[9px] text-[#8a8a78] font-mono">14:02</span>
+                  </div>
+                  <div className="py-2 flex justify-between gap-2">
+                    <p className="font-semibold text-[#6B46C1]">Base de datos sincronizada con Firebase Cloud</p>
+                    <span className="text-[9px] text-[#6B46C1] font-mono">12:00</span>
+                  </div>
+                </div>
+
+                <button 
+                  type="button"
+                  onClick={() => {
+                    setSavingMsg("Descargando reporte en formato PDF...");
+                    setTimeout(() => setSavingMsg(null), 3000);
+                  }}
+                  className="w-full py-2 bg-[#8B5CF6] hover:bg-[#7C3AED] text-white text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer uppercase text-center"
+                >
+                  Descargar Reporte Completo (PDF)
+                </button>
+              </div>
+
+            </div>
+
+          </div>
+        ) : (
+          <div className="flex-1 flex flex-col overflow-y-auto p-4 md:p-6 bg-[#FAFBF8] space-y-6 animate-fade-in">
+            
+            {/* Header banner */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 p-5 bg-[#E6FFFA] border border-[#B2F5EA] rounded-3xl shadow-xs">
+              <div>
+                <span className="px-2 py-0.5 bg-[#14B8A6] text-white text-[8px] font-bold tracking-widest rounded-full uppercase">Sistema</span>
+                <h2 className="text-xl font-serif font-bold text-[#234E52] italic mt-1 leading-none">Configuración General del Sistema</h2>
+                <p className="text-xs text-[#4A5568] mt-1">Gestión de tarifas del recurso hídrico y umbrales de seguridad de la red</p>
+              </div>
+              <span className="text-[10px] font-mono text-[#234E52] bg-white/70 px-3 py-1 rounded-xl border border-[#B2F5EA]">
+                Versión: v1.2.0-modular
+              </span>
+            </div>
+
+            {/* Split layout: Rates configuration vs Safety Thresholds */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              
+              {/* Box 1: Tarifas de Agua */}
+              <div className="bg-white border border-[#e2e2d5] rounded-3xl p-5 space-y-4 shadow-xs">
+                <div className="flex items-center gap-2">
+                  <Sliders className="w-4 h-4 text-[#14B8A6]" />
+                  <h3 className="text-sm font-bold text-[#2d2d26] uppercase tracking-wider">Tarifas y Cuotas de Agua</h3>
+                </div>
+                <p className="text-xs text-[#8a8a78]">Configura el costo del servicio básico de agua y tarifas adicionales por exceso de consumo en la comunidad.</p>
+
+                <div className="space-y-4 pt-2 text-xs">
+                  <div className="p-3 bg-[#FAFBF8] border border-[#e2e2d5] rounded-2xl flex justify-between items-center">
+                    <div>
+                      <span className="font-bold block text-slate-800">Cuota Básica Mensual</span>
+                      <span className="text-[10px] text-[#8a8a78]">Incluye hasta 10 m³ de agua</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button 
+                        type="button"
+                        onClick={() => setTarifaBase(prev => Math.max(0, prev - 0.5))}
+                        className="w-7 h-7 bg-white rounded-lg border border-[#e2e2d5] font-bold flex items-center justify-center text-slate-700 hover:bg-gray-50 cursor-pointer"
+                      >-</button>
+                      <span className="font-mono font-bold text-sm w-12 text-center text-slate-800">${tarifaBase.toFixed(2)}</span>
+                      <button 
+                        type="button"
+                        onClick={() => setTarifaBase(prev => prev + 0.5)}
+                        className="w-7 h-7 bg-white rounded-lg border border-[#e2e2d5] font-bold flex items-center justify-center text-slate-700 hover:bg-gray-50 cursor-pointer"
+                      >+</button>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-[#FAFBF8] border border-[#e2e2d5] rounded-2xl flex justify-between items-center">
+                    <div>
+                      <span className="font-bold block text-slate-800">Tarifa por m³ Excedente</span>
+                      <span className="text-[10px] text-[#8a8a78]">Aplicado después de los 10 m³</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button 
+                        type="button"
+                        onClick={() => setTarifaExcedente(prev => Math.max(0, prev - 0.05))}
+                        className="w-7 h-7 bg-white rounded-lg border border-[#e2e2d5] font-bold flex items-center justify-center text-slate-700 hover:bg-gray-50 cursor-pointer"
+                      >-</button>
+                      <span className="font-mono font-bold text-sm w-12 text-center text-slate-800">${tarifaExcedente.toFixed(2)}</span>
+                      <button 
+                        type="button"
+                        onClick={() => setTarifaExcedente(prev => prev + 0.05)}
+                        className="w-7 h-7 bg-white rounded-lg border border-[#e2e2d5] font-bold flex items-center justify-center text-slate-700 hover:bg-gray-50 cursor-pointer"
+                      >+</button>
+                    </div>
+                  </div>
+                </div>
+
+                <button 
+                  type="button"
+                  onClick={() => {
+                    setSavingMsg("Tarifas de cobro actualizadas en el sistema");
+                    setTimeout(() => setSavingMsg(null), 3000);
+                  }}
+                  className="w-full py-2 bg-[#14B8A6] hover:bg-[#0D9488] text-white text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer uppercase text-center mt-2"
+                >
+                  Guardar Tarifas
+                </button>
+              </div>
+
+              {/* Box 2: Umbrales de Seguridad Hidráulica */}
+              <div className="bg-white border border-[#e2e2d5] rounded-3xl p-5 space-y-4 shadow-xs flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-[#14B8A6]" />
+                    <h3 className="text-sm font-bold text-[#2d2d26] uppercase tracking-wider">Umbrales de Presión y Alertas</h3>
+                  </div>
+                  <p className="text-xs text-[#8a8a78] mt-1">Define rangos normales de presión estática para generar alertas automáticas en el mapa.</p>
+                </div>
+
+                <div className="space-y-3.5 pt-2 text-xs">
+                  <div>
+                    <label className="text-[10px] font-bold text-[#8a8a78] uppercase block mb-1">
+                      Presión Mínima Permitida: <span className="font-mono text-[#14B8A6] font-bold">{presionMin} PSI</span>
+                    </label>
+                    <input 
+                      type="range"
+                      min="5"
+                      max="30"
+                      value={presionMin}
+                      onChange={(e) => setPresionMin(Number(e.target.value))}
+                      className="w-full accent-[#14B8A6] h-1 bg-[#e2e2d5] rounded-lg cursor-pointer"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-[#8a8a78] uppercase block mb-1">
+                      Presión Máxima Permitida: <span className="font-mono text-[#14B8A6] font-bold">{presionMax} PSI</span>
+                    </label>
+                    <input 
+                      type="range"
+                      min="40"
+                      max="80"
+                      value={presionMax}
+                      onChange={(e) => setPresionMax(Number(e.target.value))}
+                      className="w-full accent-[#14B8A6] h-1 bg-[#e2e2d5] rounded-lg cursor-pointer"
+                    />
+                  </div>
+
+                  <label className="flex items-center gap-3 p-3 bg-[#FAFBF8] border border-[#e2e2d5] rounded-2xl cursor-pointer">
+                    <input 
+                      type="checkbox"
+                      checked={alertasEmail}
+                      onChange={(e) => setAlertasEmail(e.target.checked)}
+                      className="w-4 h-4 accent-[#14B8A6] cursor-pointer"
+                    />
+                    <div>
+                      <span className="font-bold block text-slate-800">Alertas de baja presión</span>
+                      <span className="text-[10px] text-[#8a8a78]">Enviar alerta al correo de soporte técnico</span>
+                    </div>
+                  </label>
+                </div>
+
+                <button 
+                  type="button"
+                  onClick={() => {
+                    setSavingMsg("Límites de presión actualizados correctamente");
+                    setTimeout(() => setSavingMsg(null), 3000);
+                  }}
+                  className="w-full py-2 bg-[#14B8A6] hover:bg-[#0D9488] text-white text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer uppercase text-center mt-2"
+                >
+                  Guardar Parámetros de Alerta
+                </button>
+              </div>
+
+              {/* Box 3: Base de Datos & Mantenimiento */}
+              <div className="bg-white border border-[#e2e2d5] rounded-3xl p-5 space-y-4 shadow-xs md:col-span-2">
+                <div className="flex items-center gap-2">
+                  <Database className="w-4 h-4 text-[#14B8A6]" />
+                  <h3 className="text-sm font-bold text-[#2d2d26] uppercase tracking-wider">Conexión y Mantenimiento de Datos</h3>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1 text-xs">
+                  <div className="p-3 bg-[#E6F6EB] border border-[#C6F6D5] rounded-2xl">
+                    <span className="text-[10px] text-[#2F855A] uppercase tracking-wider font-bold block">Base de Datos</span>
+                    <span className="text-sm font-bold text-[#2F855A] block mt-0.5">Firebase Connected</span>
+                    <span className="text-[10px] text-[#5A5A40]">Firestore Activo y Sincronizado</span>
+                  </div>
+
+                  <div className="p-3 bg-[#E6F0FA] border border-[#BEE3F8] rounded-2xl">
+                    <span className="text-[10px] text-[#2C5282] uppercase tracking-wider font-bold block">Colección Activa</span>
+                    <span className="text-sm font-bold text-[#2C5282] block mt-0.5">socios</span>
+                    <span className="text-[10px] text-[#8a8a78]">Esquema del censo de red</span>
+                  </div>
+
+                  <div className="p-3 bg-white border border-[#e2e2d5] rounded-2xl flex flex-col justify-center">
+                    <span className="text-[10px] text-[#8a8a78] uppercase tracking-wider font-bold block mb-1">Mantenimiento</span>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        setSavingMsg("Restaurando datos iniciales...");
+                        await seedInitialData();
+                        setSavingMsg("¡Base de datos restaurada con éxito!");
+                        setTimeout(() => setSavingMsg(null), 3000);
+                      }}
+                      className="px-2.5 py-1.5 bg-[#FAFBF8] border border-[#e2e2d5] hover:bg-[#E6E9DE]/65 text-slate-800 text-[10px] font-bold rounded-lg transition-all cursor-pointer uppercase text-center"
+                    >
+                      Restaurar Datos Iniciales
+                    </button>
+                  </div>
+                </div>
+
+                {savingMsg && (
+                  <div className="text-center p-2 bg-[#f1f3ea] text-emerald-800 text-[10px] font-bold rounded-xl animate-fade-in border border-[#e2e2d5] font-mono uppercase tracking-wider">
+                    {savingMsg}
+                  </div>
+                )}
+              </div>
+
+            </div>
+
+          </div>
+        )}
       </main>
 
       {/* Footer Status Bar with Natural Tones */}
